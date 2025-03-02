@@ -20,7 +20,7 @@ mp_draw = mp.solutions.drawing_utils
 # Class Labels (Modify based on dataset)
 label_map = {0: "Hello", 1: "Thank You", 2: "Yes", 3: "No", 4: "I Love You"}
 
-# Streamlit UI
+# Streamlit UI Configuration
 st.set_page_config(page_title="ISL Translator", page_icon="🤟", layout="wide")
 
 st.title("🤟 Indian Sign Language Translator")
@@ -40,7 +40,7 @@ with tab1:
         # Convert to OpenCV format
         image = Image.open(uploaded_file)
         image = np.array(image)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        st.image(image, caption="Uploaded Image", use_container_width=True)
 
         # Preprocess the Image
         def preprocess_hand(image):
@@ -88,7 +88,7 @@ with tab2:
     if text_input:
         st.write(f"🔠 Converting **'{text_input}'** to sign language...")
 
-        # Load Sign Language Images (Assume we have a folder 'sign_images' with images named as words)
+        # Load Sign Language Images (Ensure the correct folder structure)
         sign_images = {
             "hello": "sign_images/hello.jpg",
             "thank you": "sign_images/thank_you.jpg",
@@ -97,10 +97,11 @@ with tab2:
             "i love you": "sign_images/i_love_you.jpg",
         }
 
+        # Display corresponding sign images
         word_list = text_input.lower().split()
         for word in word_list:
-            if word in sign_images:
-                st.image(sign_images[word], caption=word.capitalize(), use_column_width=False)
+            if word in sign_images and os.path.exists(sign_images[word]):  # Check if file exists
+                st.image(sign_images[word], caption=word.capitalize(), use_container_width=False)
             else:
                 st.warning(f"No sign found for: {word}")
 

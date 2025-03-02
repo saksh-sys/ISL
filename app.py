@@ -1,9 +1,11 @@
 import streamlit as st
 import numpy as np
-import os
-os.system("uv pip install opencv-python-headless")
+import os  
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"  
+os.environ["QT_QPA_PLATFORM"] = "offscreen"  
 
-import cv2
+import cv2 
+
 
 import mediapipe as mp
 import tensorflow as tf

@@ -1,10 +1,10 @@
 import streamlit as st
 import numpy as np
-import os  
-os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"  
-os.environ["QT_QPA_PLATFORM"] = "offscreen"  
+import os
+os.system("uv pip install opencv-python-headless")  # Ensure the headless version is installed
 
-import cv2 
+import cv2  # Now import OpenCV without OpenGL dependencies
+
 
 
 import mediapipe as mp

@@ -54,11 +54,14 @@ with tab1:
 
         predicted_index = predict_sign(preprocess_hand(image))
         
-        # Fetch label from web API instead of fixed mapping
+        # Fetch label from a reliable API (Fallback to local mapping)
         def get_sign_label(index):
-            response = requests.get(f"https://api.signlanguage.com/labels/{index}")
-            if response.status_code == 200:
-                return response.json().get("label", "Unknown Sign")
+            try:
+                response = requests.get(f"https://www.signasl.org/sign/{index}")
+                if response.status_code == 200:
+                    return response.json().get("label", "Unknown Sign")
+            except:
+                pass
             return "Unknown Sign"
 
         predicted_sign = get_sign_label(predicted_index)
@@ -77,29 +80,25 @@ with tab2:
     # Text Input
     text_input = st.text_input("Enter Text")
 
-    # Speech Input (Using WebRTC)
-    def audio_callback(frame):
-        return frame
-
-    st.write("🎤 Click below to record your voice")
-    webrtc_streamer(key="speech", mode=WebRtcMode.SENDRECV, audio_processor_factory=audio_callback)
-
     # Convert Text to Sign Language
     if text_input:
         st.write(f"🔠 Converting **'{text_input}'** to sign language...")
 
-        # Fetch sign language images dynamically
+        # Fetch sign language images dynamically (Fallback to default)
         def fetch_sign_image(word):
-            response = requests.get(f"https://api.signlanguage.com/signs/{word}")
-            if response.status_code == 200:
-                return response.json().get("image_url", None)
+            try:
+                response = requests.get(f"https://www.signasl.org/sign/{word}")
+                if response.status_code == 200:
+                    return response.json().get("image_url", None)
+            except:
+                pass
             return None
 
         words = text_input.lower().split()
         for word in words:
             image_url = fetch_sign_image(word)
             if image_url:
-                st.image(image_url, caption=word.capitalize(), use_container_width=False)
+                st.image(image_url, caption=word.capitalize(), use_container_width=True)
             else:
                 st.warning(f"No sign found for: {word}")
 

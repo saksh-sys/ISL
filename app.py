@@ -11,13 +11,8 @@ from PIL import Image
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import av
 
-# Load the trained model safely
-MODEL_PATH = "sign_model_mobilenetv2.h5"
-if os.path.exists(MODEL_PATH):
-    model = tf.keras.models.load_model(MODEL_PATH)
-else:
-    st.error("Model file not found. Please upload the correct model.")
-    st.stop()
+# Load the trained model
+model = tf.keras.models.load_model("sign_model_mobilenetv2.h5")
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -36,33 +31,34 @@ tab1, tab2 = st.tabs(["🖐️ Sign to Text/Speech", "🎤 Text/Speech to Sign"]
 # ========== SIGN TO TEXT/SPEECH ==========
 with tab1:
     st.subheader("📸 Upload an Image or Use Webcam")
-    
+
     # Upload Image
     uploaded_file = st.file_uploader("Upload a sign language image", type=["jpg", "png", "jpeg"])
-    
+
     if uploaded_file:
+        # Convert to OpenCV format
         image = Image.open(uploaded_file)
         image = np.array(image)
-        st.image(image, caption="Uploaded Image")
+        st.image(image, caption="Uploaded Image", use_container_width=True)
 
+        # Preprocess the Image
         def preprocess_hand(image):
             image_resized = cv2.resize(image, (128, 128)) / 255.0
             return np.expand_dims(image_resized, axis=0)
 
+        # Predict the Sign
         def predict_sign(image):
             prediction = model.predict(image)
             predicted_index = np.argmax(prediction)
             return predicted_index
 
         predicted_index = predict_sign(preprocess_hand(image))
-
+        
+        # Fetch label from web API instead of fixed mapping
         def get_sign_label(index):
-            try:
-                response = requests.get(f"https://www.signasl.org/sign/{index}")
-                if response.status_code == 200:
-                    return response.json().get("label", "Unknown Sign")
-            except:
-                pass
+            response = requests.get(f"https://api.signlanguage.com/labels/{index}")
+            if response.status_code == 200:
+                return response.json().get("label", "Unknown Sign")
             return "Unknown Sign"
 
         predicted_sign = get_sign_label(predicted_index)
@@ -78,26 +74,32 @@ with tab1:
 with tab2:
     st.subheader("📝 Enter Text or Speak to Convert into Sign Language")
 
+    # Text Input
     text_input = st.text_input("Enter Text")
 
+    # Speech Input (Using WebRTC)
+    def audio_callback(frame):
+        return frame
+
+    st.write("🎤 Click below to record your voice")
+    webrtc_streamer(key="speech", mode=WebRtcMode.SENDRECV, audio_processor_factory=audio_callback)
+
+    # Convert Text to Sign Language
     if text_input:
         st.write(f"🔠 Converting **'{text_input}'** to sign language...")
 
+        # Fetch sign language images dynamically
         def fetch_sign_image(word):
-            try:
-                response = requests.get(f"https://www.signasl.org/sign/{word}")
-                if response.status_code == 200:
-                    data = response.json()
-                    return data.get("image_url", None)
-            except:
-                pass
+            response = requests.get(f"https://api.signlanguage.com/signs/{word}")
+            if response.status_code == 200:
+                return response.json().get("image_url", None)
             return None
 
         words = text_input.lower().split()
         for word in words:
             image_url = fetch_sign_image(word)
             if image_url:
-                st.image(image_url, caption=word.capitalize())
+                st.image(image_url, caption=word.capitalize(), use_container_width=False)
             else:
                 st.warning(f"No sign found for: {word}")
 

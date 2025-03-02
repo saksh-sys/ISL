@@ -3,6 +3,9 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import tensorflow as tf
+from gtts import gTTS
+import tempfile
+import os
 
 # Load the trained model
 MODEL_PATH = "sign_model_mobilenetv2.h5"
@@ -13,38 +16,42 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
 mp_draw = mp.solutions.drawing_utils
 
-# Define label mapping (A-Z and 1-9)
+# Define label mapping (Ensure this matches your dataset)
 label_map = {i: chr(65 + i) for i in range(26)}  # A-Z
 label_map.update({26 + i: str(i + 1) for i in range(9)})  # 1-9
-
-# **Ensure session state is initialized properly**
-if "detected_text" not in st.session_state:
-    st.session_state["detected_text"] = ""
 
 # Function to preprocess the hand image
 def preprocess_hand(image):
     image_resized = cv2.resize(image, (128, 128)) / 255.0
     return np.expand_dims(image_resized, axis=0)
 
-def detect_sign():
-    cap = cv2.VideoCapture(0)  # Open webcam
-    stframe = st.empty()  # Placeholder for webcam feed
+def main():
+    st.title("🤟 Live Sign Language Detection")
+
+    # Session state to store detected text
+    if "detected_text" not in st.session_state:
+        st.session_state.detected_text = ""
+
+    # Start video capture
+    cap = cv2.VideoCapture(0)
+    stframe = st.empty()
 
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            st.warning("⚠ Could not access the camera.")
+            st.warning("⚠ Unable to access the camera. Please check your webcam.")
             break
 
+        # Convert to RGB for MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = hands.process(rgb_frame)
 
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
-                # Draw landmarks
+                # Draw hand landmarks
                 mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                # Get bounding box
+                # Extract hand region
                 x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
                 y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
                 x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
@@ -52,7 +59,6 @@ def detect_sign():
 
                 # Crop and preprocess the hand region
                 hand_img = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
-                
                 if hand_img.shape[0] > 0 and hand_img.shape[1] > 0:
                     hand_img = preprocess_hand(hand_img)
 
@@ -61,30 +67,29 @@ def detect_sign():
                     predicted_index = np.argmax(prediction)
                     predicted_sign = label_map.get(predicted_index, "")
 
-                    # Append detected sign to text
-                    if predicted_sign:
-                        st.session_state["detected_text"] += predicted_sign
+                    # Append detected sign to session state
+                    if predicted_sign and (len(st.session_state.detected_text) == 0 or predicted_sign != st.session_state.detected_text[-1]):
+                        st.session_state.detected_text += predicted_sign
 
-        # Display camera feed in Streamlit
+        # Display the video stream
         stframe.image(frame, channels="BGR", use_column_width=True)
 
-def main():
-    st.title("🤟 Real-Time Sign to Text Conversion")
+    cap.release()
 
-    # **Ensure session state is initialized before use**
-    if "detected_text" not in st.session_state:
-        st.session_state["detected_text"] = ""
-
-    # Webcam Start Button
-    if st.button("Start Camera"):
-        detect_sign()
-
-    # Display Detected Text
-    st.text_area("Detected Text:", value=st.session_state["detected_text"], height=100, disabled=True)
+    # Show detected text
+    st.write("### ✍ Detected Text:")
+    st.text_area("Recognized Signs", st.session_state.detected_text, height=100, disabled=True)
 
     # Clear Text Button
     if st.button("Clear Text"):
-        st.session_state["detected_text"] = ""
+        st.session_state.detected_text = ""
+
+    # Convert Text to Speech
+    if st.session_state.detected_text:
+        tts = gTTS(text=st.session_state.detected_text, lang="en")
+        speech_path = "speech_output.mp3"
+        tts.save(speech_path)
+        st.audio(speech_path, format="audio/mp3", autoplay=True)
 
 if __name__ == "__main__":
     main()

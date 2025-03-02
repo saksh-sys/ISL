@@ -1,11 +1,15 @@
 import streamlit as st
 import numpy as np
+import os
+os.system("uv pip install opencv-python-headless")
+
 import cv2
+
 import mediapipe as mp
 import tensorflow as tf
 import requests
 import tempfile
-import os
+
 from gtts import gTTS
 from PIL import Image
 from streamlit_webrtc import webrtc_streamer, WebRtcMode

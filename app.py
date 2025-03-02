@@ -1,3 +1,8 @@
+import os
+
+# Install system dependencies (for cloud environments)
+os.system("apt-get update && apt-get install -y libgl1-mesa-glx libglib2.0-0")
+
 import streamlit as st
 import cv2
 import numpy as np

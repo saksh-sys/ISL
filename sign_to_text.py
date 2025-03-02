@@ -3,8 +3,6 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import tensorflow as tf
-import tempfile
-import os
 
 # Load the trained model
 MODEL_PATH = "sign_model_mobilenetv2.h5"
@@ -30,7 +28,6 @@ def preprocess_hand(image):
 
 def detect_sign():
     cap = cv2.VideoCapture(0)  # Open webcam
-
     stframe = st.empty()  # Placeholder for webcam feed
 
     while cap.isOpened():
@@ -68,14 +65,8 @@ def detect_sign():
                     if predicted_sign:
                         st.session_state["detected_text"] += predicted_sign
 
-        # Display camera feed
+        # Display camera feed in Streamlit
         stframe.image(frame, channels="BGR", use_column_width=True)
-
-        # Exit condition
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
 
 def main():
     st.title("🤟 Real-Time Sign to Text Conversion")

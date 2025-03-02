@@ -11,8 +11,14 @@ from PIL import Image
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import av
 
+# Check if the model file exists before loading
+model_path = "sign_model_mobilenetv2.h5"
+if not os.path.exists(model_path):
+    st.error("Model file not found! Please upload the correct model file.")
+    st.stop()
+
 # Load the trained model
-model = tf.keras.models.load_model("sign_model_mobilenetv2.h5")
+model = tf.keras.models.load_model(model_path)
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -82,7 +88,7 @@ with tab2:
             try:
                 response = requests.get(f"https://www.signasl.org/sign/{word}")
                 if response.status_code == 200:
-                    return response.url
+                    return response.json().get("image_url", None)
             except:
                 pass
             local_image_path = f"signs/{word}.jpg"

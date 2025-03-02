@@ -4,7 +4,9 @@ import numpy as np
 import mediapipe as mp
 import tensorflow as tf
 from gtts import gTTS
-import time
+from PIL import Image
+import tempfile
+import os
 
 # Load the trained model
 MODEL_PATH = "sign_model_mobilenetv2.h5"
@@ -15,11 +17,11 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
 mp_draw = mp.solutions.drawing_utils
 
-# Define label mapping (A-Z and 1-9)
+# Define label mapping (Ensure this matches your dataset)
 label_map = {i: chr(65 + i) for i in range(26)}  # A-Z
 label_map.update({26 + i: str(i + 1) for i in range(9)})  # 1-9
 
-# Preprocess function
+# Function to preprocess the hand image
 def preprocess_hand(image):
     image_resized = cv2.resize(image, (128, 128)) / 255.0
     return np.expand_dims(image_resized, axis=0)
@@ -27,62 +29,56 @@ def preprocess_hand(image):
 def main():
     st.title("🤟 Sign to Text Conversion")
 
-    # Read-only text box for detected signs
-    detected_text = st.session_state.get("detected_text", "")
+    # Camera Input
+    st.write("### 📷 Capture Sign Language Gesture")
+    captured_image = st.camera_input("Take a picture")
 
-    # Clear text button
-    if st.button("Clear Text"):
-        st.session_state["detected_text"] = ""
-        detected_text = ""
+    if captured_image:
+        # Convert to OpenCV format
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            temp_file.write(captured_image.getvalue())
+            temp_file_path = temp_file.name
+        
+        image = cv2.imread(temp_file_path)
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    st.text_area("Detected Signs:", value=detected_text, height=100, disabled=True)
+        # Process image with MediaPipe
+        result = hands.process(rgb_image)
 
-    # Open camera
-    cap = cv2.VideoCapture(0)
-    last_capture_time = time.time()
+        if result.multi_hand_landmarks:
+            for hand_landmarks in result.multi_hand_landmarks:
+                # Draw landmarks
+                mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            st.warning("⚠ Could not access camera.")
-            break
+                # Get bounding box of hand
+                x_min = min([lm.x for lm in hand_landmarks.landmark]) * image.shape[1]
+                y_min = min([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
+                x_max = max([lm.x for lm in hand_landmarks.landmark]) * image.shape[1]
+                y_max = max([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
 
-        # Capture frame every second
-        if time.time() - last_capture_time >= 1:
-            last_capture_time = time.time()
+                # Crop hand region
+                hand_img = image[int(y_min):int(y_max), int(x_min):int(x_max)]
+                
+                if hand_img.shape[0] > 0 and hand_img.shape[1] > 0:
+                    hand_img = preprocess_hand(hand_img)
 
-            # Convert to RGB
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            result = hands.process(rgb_frame)
+                    # Predict the sign
+                    prediction = model.predict(hand_img)
+                    predicted_index = np.argmax(prediction)
+                    predicted_sign = label_map.get(predicted_index, "Unknown")
 
-            if result.multi_hand_landmarks:
-                for hand_landmarks in result.multi_hand_landmarks:
-                    mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                    # Display results
+                    st.image(image, caption=f"Processed Image", use_column_width=True)
+                    st.write(f"### 🔠 Predicted Sign: **{predicted_sign}**")
 
-                    # Get bounding box
-                    x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-                    y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
-                    x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
-                    y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+                    # Convert to Speech
+                    tts = gTTS(text=str(predicted_sign), lang="en")
+                    speech_path = "speech_output.mp3"
+                    tts.save(speech_path)
+                    st.audio(speech_path, format="audio/mp3", autoplay=True)
 
-                    hand_img = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
+        else:
+            st.warning("⚠ No hand detected. Try again.")
 
-                    if hand_img.shape[0] > 0 and hand_img.shape[1] > 0:
-                        hand_img = preprocess_hand(hand_img)
-
-                        # Predict sign
-                        prediction = model.predict(hand_img)
-                        predicted_index = np.argmax(prediction)
-                        predicted_sign = label_map.get(predicted_index, "")
-
-                        if predicted_sign:
-                            st.session_state["detected_text"] += predicted_sign
-                            st.experimental_rerun()
-
-            # Show camera feed
-            st.image(frame, caption="Live Feed", use_column_width=True)
-
-    cap.release()
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": 
+    main()   

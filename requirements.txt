@@ -1,9 +1,7 @@
 streamlit
-streamlit-webrtc
 tensorflow
 opencv-python
+numpy
 mediapipe
 gtts
-pillow
-numpy
-requests
+pydub

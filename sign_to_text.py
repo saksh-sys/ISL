@@ -76,7 +76,6 @@ def detect_sign():
             break
 
     cap.release()
-    cv2.destroyAllWindows()
 
 def main():
     st.title("🤟 Real-Time Sign to Text Conversion")

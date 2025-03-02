@@ -17,7 +17,7 @@ mp_draw = mp.solutions.drawing_utils
 label_map = {i: chr(65 + i) for i in range(26)}  # A-Z
 label_map.update({26 + i: str(i + 1) for i in range(9)})  # 1-9
 
-# Session State to store detected text
+# **Ensure session state is initialized properly**
 if "detected_text" not in st.session_state:
     st.session_state["detected_text"] = ""
 
@@ -70,6 +70,10 @@ def detect_sign():
 
 def main():
     st.title("🤟 Real-Time Sign to Text Conversion")
+
+    # **Ensure session state is initialized before use**
+    if "detected_text" not in st.session_state:
+        st.session_state["detected_text"] = ""
 
     # Webcam Start Button
     if st.button("Start Camera"):

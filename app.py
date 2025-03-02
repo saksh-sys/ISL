@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-import cv2 
+import cv2
 import mediapipe as mp
 import tensorflow as tf
 import requests
@@ -11,14 +11,13 @@ from PIL import Image
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import av
 
-# Check if the model file exists before loading
-model_path = "sign_model_mobilenetv2.h5"
-if not os.path.exists(model_path):
-    st.error("Model file not found! Please upload the correct model file.")
+# Load the trained model safely
+MODEL_PATH = "sign_model_mobilenetv2.h5"
+if os.path.exists(MODEL_PATH):
+    model = tf.keras.models.load_model(MODEL_PATH)
+else:
+    st.error("Model file not found. Please upload the correct model.")
     st.stop()
-
-# Load the trained model
-model = tf.keras.models.load_model(model_path)
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -37,10 +36,10 @@ tab1, tab2 = st.tabs(["🖐️ Sign to Text/Speech", "🎤 Text/Speech to Sign"]
 # ========== SIGN TO TEXT/SPEECH ==========
 with tab1:
     st.subheader("📸 Upload an Image or Use Webcam")
-
+    
     # Upload Image
     uploaded_file = st.file_uploader("Upload a sign language image", type=["jpg", "png", "jpeg"])
-
+    
     if uploaded_file:
         image = Image.open(uploaded_file)
         image = np.array(image)
@@ -88,11 +87,11 @@ with tab2:
             try:
                 response = requests.get(f"https://www.signasl.org/sign/{word}")
                 if response.status_code == 200:
-                    return response.json().get("image_url", None)
+                    data = response.json()
+                    return data.get("image_url", None)
             except:
                 pass
-            local_image_path = f"signs/{word}.jpg"
-            return local_image_path if os.path.exists(local_image_path) else None
+            return None
 
         words = text_input.lower().split()
         for word in words:

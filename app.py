@@ -1,12 +1,7 @@
 import streamlit as st
 import numpy as np
 import os
-os.system("uv pip install opencv-python-headless")  # Ensure the headless version is installed
-
-import cv2  # Now import OpenCV without OpenGL dependencies
-
-
-
+import cv2 
 import mediapipe as mp
 import tensorflow as tf
 import requests

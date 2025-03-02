@@ -2,7 +2,6 @@ import streamlit as st
 from sign_to_text import main as sign_to_text_main
 from text_to_sign import main as text_to_sign_main
 
-# Sidebar for navigation
 st.sidebar.title("🔄 Navigation")
 page = st.sidebar.radio("Select Mode:", ["🤟 Sign to Text", "📖 Text to Sign"])
 

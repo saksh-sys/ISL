@@ -36,25 +36,21 @@ with tab1:
     uploaded_file = st.file_uploader("Upload a sign language image", type=["jpg", "png", "jpeg"])
 
     if uploaded_file:
-        # Convert to OpenCV format
         image = Image.open(uploaded_file)
         image = np.array(image)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
+        st.image(image, caption="Uploaded Image")
 
-        # Preprocess the Image
         def preprocess_hand(image):
             image_resized = cv2.resize(image, (128, 128)) / 255.0
             return np.expand_dims(image_resized, axis=0)
 
-        # Predict the Sign
         def predict_sign(image):
             prediction = model.predict(image)
             predicted_index = np.argmax(prediction)
             return predicted_index
 
         predicted_index = predict_sign(preprocess_hand(image))
-        
-        # Fetch label from a reliable API (Fallback to local mapping)
+
         def get_sign_label(index):
             try:
                 response = requests.get(f"https://www.signasl.org/sign/{index}")
@@ -77,28 +73,26 @@ with tab1:
 with tab2:
     st.subheader("📝 Enter Text or Speak to Convert into Sign Language")
 
-    # Text Input
     text_input = st.text_input("Enter Text")
 
-    # Convert Text to Sign Language
     if text_input:
         st.write(f"🔠 Converting **'{text_input}'** to sign language...")
 
-        # Fetch sign language images dynamically (Fallback to default)
         def fetch_sign_image(word):
             try:
                 response = requests.get(f"https://www.signasl.org/sign/{word}")
                 if response.status_code == 200:
-                    return response.json().get("image_url", None)
+                    return response.url
             except:
                 pass
-            return None
+            local_image_path = f"signs/{word}.jpg"
+            return local_image_path if os.path.exists(local_image_path) else None
 
         words = text_input.lower().split()
         for word in words:
             image_url = fetch_sign_image(word)
             if image_url:
-                st.image(image_url, caption=word.capitalize(), use_container_width=True)
+                st.image(image_url, caption=word.capitalize())
             else:
                 st.warning(f"No sign found for: {word}")
 

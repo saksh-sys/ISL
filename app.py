@@ -1,17 +1,13 @@
 import streamlit as st
-import numpy as np
 import cv2
+import numpy as np
 import mediapipe as mp
 import tensorflow as tf
-import requests
-import tempfile
-import os
 from gtts import gTTS
-from PIL import Image
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-import av
+from pydub import AudioSegment
+from pydub.playback import play
 
-# Load the trained model
+# Load trained model
 model = tf.keras.models.load_model("sign_model_mobilenetv2.h5")
 
 # Initialize MediaPipe Hands
@@ -19,91 +15,56 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
 mp_draw = mp.solutions.drawing_utils
 
-# Streamlit UI Configuration
-st.set_page_config(page_title="ISL Translator", page_icon="🤟", layout="wide")
+# Define label mapping
+label_map = {0: "Hello", 1: "Thank You", 2: "Please"}  # Update with actual labels
 
-st.title("🤟 Indian Sign Language Translator")
-st.write("Translate **sign language** to text/speech and vice versa!")
+# Preprocess function
+def preprocess_hand(image):
+    image_resized = cv2.resize(image, (128, 128)) / 255.0
+    return np.expand_dims(image_resized, axis=0)
 
-# Tabs for different modes
-tab1, tab2 = st.tabs(["🖐️ Sign to Text/Speech", "🎤 Text/Speech to Sign"])
+# Streamlit UI
+st.title("Indian Sign Language Recognition")
+st.sidebar.header("Camera Options")
 
-# ========== SIGN TO TEXT/SPEECH ==========
-with tab1:
-    st.subheader("📸 Upload an Image or Use Webcam")
+# Open webcam using Streamlit
+cap = cv2.VideoCapture(0)
+frame_placeholder = st.empty()
 
-    # Upload Image
-    uploaded_file = st.file_uploader("Upload a sign language image", type=["jpg", "png", "jpeg"])
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-    if uploaded_file:
-        # Convert to OpenCV format
-        image = Image.open(uploaded_file)
-        image = np.array(image)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    result = hands.process(rgb_frame)
 
-        # Preprocess the Image
-        def preprocess_hand(image):
-            image_resized = cv2.resize(image, (128, 128)) / 255.0
-            return np.expand_dims(image_resized, axis=0)
+    if result.multi_hand_landmarks:
+        for hand_landmarks in result.multi_hand_landmarks:
+            mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-        # Predict the Sign
-        def predict_sign(image):
-            prediction = model.predict(image)
-            predicted_index = np.argmax(prediction)
-            return predicted_index
+            x_min = min([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
+            y_min = min([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
+            x_max = max([lm.x for lm in hand_landmarks.landmark]) * frame.shape[1]
+            y_max = max([lm.y for lm in hand_landmarks.landmark]) * frame.shape[0]
 
-        predicted_index = predict_sign(preprocess_hand(image))
-        
-        # Fetch label from a reliable API (Fallback to local mapping)
-        def get_sign_label(index):
-            try:
-                response = requests.get(f"https://www.signasl.org/sign/{index}")
-                if response.status_code == 200:
-                    return response.json().get("label", "Unknown Sign")
-            except:
-                pass
-            return "Unknown Sign"
+            hand_img = frame[int(y_min):int(y_max), int(x_min):int(x_max)]
+            if hand_img.shape[0] > 0 and hand_img.shape[1] > 0:
+                hand_img = preprocess_hand(hand_img)
 
-        predicted_sign = get_sign_label(predicted_index)
-        st.success(f"**Predicted Sign:** {predicted_sign}")
+                prediction = model.predict(hand_img)
+                predicted_index = np.argmax(prediction)
+                predicted_sign = label_map.get(predicted_index, "Unknown")
 
-        # Convert Prediction to Speech
-        tts = gTTS(text=predicted_sign, lang="en")
-        temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts.save(temp_audio.name)
-        st.audio(temp_audio.name, format="audio/mp3")
+                st.sidebar.subheader(f"Predicted Sign: {predicted_sign}")
 
-# ========== TEXT/SPEECH TO SIGN ==========
-with tab2:
-    st.subheader("📝 Enter Text or Speak to Convert into Sign Language")
+                # Convert text to speech
+                tts = gTTS(text=predicted_sign, lang="en")
+                tts.save("output.mp3")
+                audio = AudioSegment.from_mp3("output.mp3")
+                play(audio)
 
-    # Text Input
-    text_input = st.text_input("Enter Text")
+    frame_placeholder.image(frame, channels="BGR")
 
-    # Convert Text to Sign Language
-    if text_input:
-        st.write(f"🔠 Converting **'{text_input}'** to sign language...")
-
-        # Fetch sign language images dynamically (Fallback to default)
-        def fetch_sign_image(word):
-            try:
-                response = requests.get(f"https://www.signasl.org/sign/{word}")
-                if response.status_code == 200:
-                    return response.json().get("image_url", None)
-            except:
-                pass
-            return None
-
-        words = text_input.lower().split()
-        for word in words:
-            image_url = fetch_sign_image(word)
-            if image_url:
-                st.image(image_url, caption=word.capitalize(), use_container_width=True)
-            else:
-                st.warning(f"No sign found for: {word}")
-
-        # Convert Text to Speech
-        tts = gTTS(text=text_input, lang="en")
-        temp_audio_text = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts.save(temp_audio_text.name)
-        st.audio(temp_audio_text.name, format="audio/mp3")
+cap.release()
+st.write("Press 'Stop' to exit")

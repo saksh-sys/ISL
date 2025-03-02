@@ -1,8 +1,9 @@
 streamlit
+streamlit-webrtc
 tensorflow
-opencv-python-headless
+opencv-python
 mediapipe
 gtts
 pillow
 numpy
-SpeechRecognition
+requests

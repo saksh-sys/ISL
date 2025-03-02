@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-import cv2
+import cv2 headless
 import mediapipe as mp
 import tensorflow as tf
 import requests

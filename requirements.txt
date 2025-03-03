@@ -1,9 +1,9 @@
 streamlit
 tensorflow
-opencv-python-headless
 numpy
 mediapipe
 gtts
 pydub
 speechrecognition
-
+streamlit-webrtc
+av

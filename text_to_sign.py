@@ -1,78 +1,77 @@
-import streamlit as st
-import speech_recognition as sr
-import time
-from PIL import Image
 import os
+import streamlit as st
+import cv2
+import numpy as np
+import speech_recognition as sr
+from gtts import gTTS
+from pydub import AudioSegment
+from pydub.playback import play
+from io import BytesIO
 
-# Ensure Kaggle API is installed
-os.system("pip install kaggle")
+# Define dataset path (update if needed)
+DATASET_PATH = "dataset"
 
-# Download and extract dataset if not already present
-dataset_path = "dataset"
-if not os.path.exists(dataset_path):
-    os.system("kaggle datasets download -d atharvadumbre/indian-sign-language-islrtc-referred --unzip -p dataset")
-
-# Now you can use dataset_path for model training or inference
-
-def load_sign_images():
-    """Load ISL images from the dataset folder."""
-    sign_images = {}
-    dataset_path = "dataset"  # Adjust the path as per your dataset folder
-    
-    for letter in list("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"):
-        letter_path = os.path.join(dataset_path, letter)
-        if os.path.exists(letter_path):
-            images = [os.path.join(letter_path, img) for img in os.listdir(letter_path) if img.endswith(".jpg")]
-            sign_images[letter] = images[0] if images else None  # Take the first image
-    
-    return sign_images
-
-def text_to_sign(text, sign_images):
-    """Display sign language images corresponding to the text."""
-    st.write("### ISL Representation:")
-    col1, col2, col3 = st.columns(3)
-    
-    for i, char in enumerate(text.upper()):
-        if char in sign_images and sign_images[char]:
-            img = Image.open(sign_images[char])
-            with [col1, col2, col3][i % 3]:
-                st.image(img, caption=char, use_column_width=True)
-            time.sleep(0.5)  # Delay for effect
-
-def recognize_speech():
-    """Convert speech to text using Google Speech Recognition."""
+# Function to convert speech-to-text
+def speech_to_text():
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.write("🎤 Speak now...")
+        st.info("Listening... Speak now!")
         try:
             audio = recognizer.listen(source, timeout=5)
-            text = recognizer.recognize_google(audio)
-            st.success(f"You said: {text}")
+            text = recognizer.recognize_google(audio).upper()
+            st.success(f"Recognized Text: {text}")
             return text
         except sr.UnknownValueError:
             st.error("Could not understand the audio.")
         except sr.RequestError:
-            st.error("Could not request results. Check your internet connection.")
-        except Exception as e:
-            st.error(f"Error: {e}")
+            st.error("STT request failed. Check internet connection.")
     return ""
 
+# Function to generate speech from text
+def text_to_speech(text):
+    tts = gTTS(text)
+    audio_buffer = BytesIO()
+    tts.write_to_fp(audio_buffer)
+    audio_buffer.seek(0)
+    st.audio(audio_buffer, format="audio/mp3")
+
+# Function to display ISL images
+def text_to_sign_images(text):
+    images = []
+    for char in text:
+        char_folder = os.path.join(DATASET_PATH, char)
+        if os.path.exists(char_folder):
+            image_files = os.listdir(char_folder)
+            if image_files:
+                img_path = os.path.join(char_folder, image_files[0])  # Use first image
+                images.append(img_path)
+    
+    # Display images in Streamlit
+    cols = st.columns(len(images) if images else 1)
+    for i, img_path in enumerate(images):
+        img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        cols[i].image(img, use_column_width=True)
+
+# Streamlit UI
 def main():
-    st.title("📖 Text to Sign Language Converter")
-    sign_images = load_sign_images()
+    st.title("📖 Text/Speech to Sign Language")
     
-    input_type = st.radio("Choose Input Type:", ["📝 Text", "🎤 Speech"])
+    option = st.radio("Choose Input Method:", ["📝 Type Text", "🎤 Speak"])
+    text_input = ""
     
-    if input_type == "📝 Text":
-        user_input = st.text_input("Enter text (A-Z, 0-9 only):")
-        if st.button("Convert to Sign Language") and user_input:
-            text_to_sign(user_input, sign_images)
+    if option == "📝 Type Text":
+        text_input = st.text_input("Enter text:")
+    elif option == "🎤 Speak":
+        if st.button("🎙 Start Listening"):
+            text_input = speech_to_text()
     
-    elif input_type == "🎤 Speech":
-        if st.button("Start Listening"):
-            recognized_text = recognize_speech()
-            if recognized_text:
-                text_to_sign(recognized_text, sign_images)
+    if text_input:
+        st.subheader("🖼️ Sign Language Representation")
+        text_to_sign_images(text_input)
+        
+        st.subheader("🔊 Speech Output")
+        text_to_speech(text_input)
 
 if __name__ == "__main__":
     main()

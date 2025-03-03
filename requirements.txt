@@ -6,6 +6,4 @@ mediapipe
 gtts
 pydub
 speechrecognition
-ffmpeg
-imageio[ffmpeg]
-ffmpeg-python
+

@@ -5,3 +5,4 @@ numpy
 mediapipe
 gtts
 pydub
+speechrecognition

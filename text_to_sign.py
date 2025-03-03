@@ -1,8 +1,18 @@
 import streamlit as st
-import os
 import speech_recognition as sr
 import time
 from PIL import Image
+import os
+
+# Ensure Kaggle API is installed
+os.system("pip install kaggle")
+
+# Download and extract dataset if not already present
+dataset_path = "dataset"
+if not os.path.exists(dataset_path):
+    os.system("kaggle datasets download -d atharvadumbre/indian-sign-language-islrtc-referred --unzip -p dataset")
+
+# Now you can use dataset_path for model training or inference
 
 def load_sign_images():
     """Load ISL images from the dataset folder."""

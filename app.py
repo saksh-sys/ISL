@@ -8,20 +8,28 @@ from PIL import Image
 import sign_to_text  # Import sign to text module
 import text_to_sign  # Import text to sign module
 
-# GitHub Raw URL for model
-MODEL_URL = "https://github.com/saksh-sys/ISL/blob/main/model_sign_99.h5"
+import os
+import urllib.request
 
-@st.cache_resource
+
+MODEL_URL = "https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO/raw/main/model_sign_99.h5"
+model_path = "model_sign_99.h5"
+
 def load_model():
     """Download and load the model from GitHub."""
-    response = requests.get(MODEL_URL)
-    model_path = "model_sign_99.h5"
-    with open(model_path, "wb") as f:
-        f.write(response.content)
+    if not os.path.exists(model_path) or os.path.getsize(model_path) < 1000:  # Check file size
+        print("Downloading model...")
+        urllib.request.urlretrieve(MODEL_URL, model_path)
+
+    print(f"Model file size: {os.path.getsize(model_path)} bytes")  # Debugging
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError("Model download failed! Check the URL.")
+
     return tf.keras.models.load_model(model_path)
 
-# Load Model
 model = load_model()
+
 
 # Class labels (Adjust based on your dataset)
 class_names = [chr(i) for i in range(65, 91)] + [str(i) for i in range(10)]  # A-Z + 0-9

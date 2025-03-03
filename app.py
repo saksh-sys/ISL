@@ -30,5 +30,5 @@ if uploaded_file is not None:
     predicted_class = predict_sign(uploaded_file)
 
     # Display results
-    st.image(uploaded_file, caption=f"Predicted Sign: {predicted_class}", use_column_width=True)
+    st.image(uploaded_file, caption=f"Predicted Sign: {predicted_class}", use_container_width=True)
     st.success(f"Predicted Sign: {predicted_class}")

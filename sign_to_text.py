@@ -1,72 +1,84 @@
 import streamlit as st
+import cv2
 import numpy as np
-import tensorflow as tf
 import mediapipe as mp
+import tensorflow as tf
+from gtts import gTTS
 from PIL import Image
-import imageio
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
+import tempfile
+import os
 
-# Load models
-model1 = tf.keras.models.load_model("sign_model.h5")
-model2 = tf.keras.models.load_model("sign_model_mobilenetv2.h5")
-
-# Define label mappings
-labels = [str(i) for i in range(1, 10)] + [chr(i) for i in range(65, 91)]  # 1-9 and A-Z
-label_dict = {i: label for i, label in enumerate(labels)}
+# Load the trained model
+MODEL_PATH = "sign_model_mobilenetv2.h5"
+model = tf.keras.models.load_model(MODEL_PATH)
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5)
+hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
+mp_draw = mp.solutions.drawing_utils
 
-class SignProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.detected_chars = []
-    
-    def preprocess_image(self, image):
-        image = image.resize((64, 64))
-        image = np.array(image).astype("float32") / 255.0
-        return np.expand_dims(image, axis=0)
-    
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = hands.process(rgb_frame)
-        
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                x_min = int(min([lm.x for lm in hand_landmarks.landmark]) * img.shape[1])
-                y_min = int(min([lm.y for lm in hand_landmarks.landmark]) * img.shape[0])
-                x_max = int(max([lm.x for lm in hand_landmarks.landmark]) * img.shape[1])
-                y_max = int(max([lm.y for lm in hand_landmarks.landmark]) * img.shape[0])
-                
-                if x_max > x_min and y_max > y_min:
-                    hand_img = rgb_frame[y_min:y_max, x_min:x_max]
-                    hand_img = Image.fromarray(hand_img)
-                    hand_img = self.preprocess_image(hand_img)
-                    
-                    pred1 = model1.predict(hand_img)
-                    pred2 = model2.predict(hand_img)
-                    
-                    label_index = np.argmax((pred1 + pred2) / 2)
-                    predicted_char = label_dict.get(label_index, "")
-                    
-                    if predicted_char and (not self.detected_chars or predicted_char != self.detected_chars[-1]):
-                        self.detected_chars.append(predicted_char)
-                        st.session_state.text_box = "".join(self.detected_chars)
-        
-        return frame
+# Define label mapping (Ensure this matches your dataset)
+label_map = {i: chr(65 + i) for i in range(26)}  # A-Z
+label_map.update({26 + i: str(i + 1) for i in range(9)})  # 1-9
+
+# Function to preprocess the hand image
+def preprocess_hand(image):
+    image_resized = cv2.resize(image, (128, 128)) / 255.0
+    return np.expand_dims(image_resized, axis=0)
 
 def main():
-    st.title("ISL Sign Language to Text")
-    st.markdown("### Automatically captures hand signs and converts to text")
-    
-    # Read-only textbox for detected text
-    st.text_area("Detected Text:", "", height=100, key="text_box", disabled=True)
-    if st.button("Clear Text"):
-        st.session_state.text_box = ""
-    
-    webrtc_streamer(key="sign-detection", video_processor_factory=SignProcessor)
+    st.title("🤟 Sign to Text Conversion")
 
-if __name__ == "__main__":
-    main()
+    # Camera Input
+    st.write("### 📷 Capture Sign Language Gesture")
+    captured_image = st.camera_input("Take a picture")
+
+    if captured_image:
+        # Convert to OpenCV format
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            temp_file.write(captured_image.getvalue())
+            temp_file_path = temp_file.name
+        
+        image = cv2.imread(temp_file_path)
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Process image with MediaPipe
+        result = hands.process(rgb_image)
+
+        if result.multi_hand_landmarks:
+            for hand_landmarks in result.multi_hand_landmarks:
+                # Draw landmarks
+                mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+                # Get bounding box of hand
+                x_min = min([lm.x for lm in hand_landmarks.landmark]) * image.shape[1]
+                y_min = min([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
+                x_max = max([lm.x for lm in hand_landmarks.landmark]) * image.shape[1]
+                y_max = max([lm.y for lm in hand_landmarks.landmark]) * image.shape[0]
+
+                # Crop hand region
+                hand_img = image[int(y_min):int(y_max), int(x_min):int(x_max)]
+                
+                if hand_img.shape[0] > 0 and hand_img.shape[1] > 0:
+                    hand_img = preprocess_hand(hand_img)
+
+                    # Predict the sign
+                    prediction = model.predict(hand_img)
+                    predicted_index = np.argmax(prediction)
+                    predicted_sign = label_map.get(predicted_index, "Unknown")
+
+                    # Display results
+                    st.image(image, caption=f"Processed Image", use_column_width=True)
+                    st.write(f"### 🔠 Predicted Sign: **{predicted_sign}**")
+
+                    # Convert to Speech
+                    tts = gTTS(text=str(predicted_sign), lang="en")
+                    speech_path = "speech_output.mp3"
+                    tts.save(speech_path)
+                    st.audio(speech_path, format="audio/mp3", autoplay=True)
+
+        else:
+            st.warning("⚠ No hand detected. Try again.")
+
+if __name__ == "__main__": 
+    main()   

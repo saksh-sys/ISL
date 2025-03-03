@@ -1,14 +1,21 @@
-def convert(sign):
-    """Convert recognized sign to text (if needed for further processing)."""
-    # Example: Modify mapping if needed
-    sign_text_mapping = {
-        "A": "A", "B": "B", "C": "C", "D": "D", "E": "E", 
-        "F": "F", "G": "G", "H": "H", "I": "I", "J": "J",
-        "K": "K", "L": "L", "M": "M", "N": "N", "O": "O", 
-        "P": "P", "Q": "Q", "R": "R", "S": "S", "T": "T",
-        "U": "U", "V": "V", "W": "W", "X": "X", "Y": "Y", "Z": "Z",
-        "0": "Zero", "1": "One", "2": "Two", "3": "Three", "4": "Four",
-        "5": "Five", "6": "Six", "7": "Seven", "8": "Eight", "9": "Nine"
-    }
-    
-    return sign_text_mapping.get(sign, "Unknown")
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+
+# Load the trained model
+model = tf.keras.models.load_model("model_sign_99.h5")
+
+# Define class labels (update based on dataset)
+class_labels = [chr(i) for i in range(65, 91)] + [str(i) for i in range(10)]  # A-Z + 0-9
+
+def predict_sign(img_path):
+    """Loads an image and predicts the corresponding sign."""
+    img = image.load_img(img_path, target_size=(224, 224))
+    img_array = image.img_to_array(img) / 255.0  # Normalize
+    img_array = np.expand_dims(img_array, axis=0)
+
+    # Make prediction
+    prediction = model.predict(img_array)
+    predicted_class = class_labels[np.argmax(prediction)]
+
+    return predicted_class

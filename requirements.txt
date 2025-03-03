@@ -1,12 +1,5 @@
 streamlit
 tensorflow
 numpy
-gtts
-pydub
-speechrecognition
-mediapipe
-scikit-learn
 pillow
-imageio
-streamlit-webrtc
-opencv-python-headless
+requests

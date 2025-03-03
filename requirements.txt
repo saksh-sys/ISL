@@ -4,7 +4,8 @@ numpy
 gtts
 pydub
 speechrecognition
-opencv-python-headless
 mediapipe
 scikit-learn
 pillow
+imageio
+streamlit-webrtc

@@ -9,7 +9,7 @@ import sign_to_text  # Import sign to text module
 import text_to_sign  # Import text to sign module
 
 # GitHub Raw URL for model
-MODEL_URL = "model_sign_99.h5"
+MODEL_URL = "https://github.com/saksh-sys/ISL/blob/main/model_sign_99.h5"
 
 @st.cache_resource
 def load_model():

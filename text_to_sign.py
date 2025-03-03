@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 
-# Assuming you have a dataset folder with images named as "A.jpg", "B.jpg", ..., "0.jpg", "1.jpg"
+# Assuming you have images named as "A.jpg", "B.jpg", ..., "0.jpg"
 DATASET_PATH = "dataset/"
 
 def text_to_sign(text):

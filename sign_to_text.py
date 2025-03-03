@@ -4,8 +4,13 @@ import tensorflow as tf
 import mediapipe as mp
 from PIL import Image
 import time
+import asyncio
 import av
+from aiortc.contrib.media import MediaPlayer
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
+
+# Ensure an event loop exists
+asyncio.set_event_loop(asyncio.new_event_loop())
 
 # Load models
 model1 = tf.keras.models.load_model("sign_model.h5")
@@ -31,7 +36,6 @@ class HandSignProcessor(VideoProcessorBase):
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         image = frame.to_ndarray(format="bgr24")
-        image = cv2.flip(image, 1)
         rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = hands.process(rgb_frame)
         
@@ -71,7 +75,7 @@ def main():
         st.session_state.text_box = ""
     
     # WebRTC-based camera stream
-    webrtc_streamer(key="sign-detection", video_processor_factory=HandSignProcessor)
+    webrtc_streamer(key="sign-detection", video_processor_factory=HandSignProcessor, media_stream_constraints={"video": True, "audio": False})
 
 if __name__ == "__main__":
     main()

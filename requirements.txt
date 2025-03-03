@@ -7,3 +7,4 @@ pydub
 speechrecognition
 streamlit-webrtc
 av
+aiortc

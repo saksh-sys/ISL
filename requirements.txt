@@ -6,4 +6,5 @@ gtts
 pydub
 speechrecognition
 opencv-python
+opencv-python-headless
 pillow

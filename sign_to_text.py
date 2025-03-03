@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
@@ -5,8 +6,9 @@ from tensorflow.keras.preprocessing import image
 # Load the trained model
 model = tf.keras.models.load_model("model_sign_99.h5")
 
-# Define class labels (A-Z + 0-9)
-class_labels = [chr(i) for i in range(65, 91)] + [str(i) for i in range(10)]
+# Extract class labels dynamically from the dataset folder
+DATASET_PATH = "dataset"
+class_labels = sorted(os.listdir(DATASET_PATH))  # Ensure sorted order
 
 def predict_sign(img_file):
     """Predicts the sign from an uploaded image."""
@@ -16,6 +18,6 @@ def predict_sign(img_file):
 
     # Make prediction
     prediction = model.predict(img_array)
-    predicted_class = class_labels[np.argmax(prediction)]
+    predicted_class = class_labels[np.argmax(prediction)]  # Map prediction index to class
 
     return predicted_class

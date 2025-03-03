@@ -9,3 +9,4 @@ scikit-learn
 pillow
 imageio
 streamlit-webrtc
+opencv-python-headless

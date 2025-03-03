@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 # Load pre-trained sign recognition model
-MODEL_PATH = "sign_model.h5"  # Update with actual model path
+MODEL_PATH = "sign_model_mobilenetv2.h5"  # Update with actual model path
 DATASET_PATH = "dataset"
 
 def load_model():

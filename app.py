@@ -5,7 +5,6 @@ from tensorflow.keras.preprocessing import image
 import requests
 from io import BytesIO
 import os
-import cv2
 from PIL import Image
 from sign_to_text import predict_sign
 from text_to_sign import text_to_sign
@@ -21,6 +20,10 @@ if not os.path.exists(MODEL_PATH):
         with open(MODEL_PATH, "wb") as f:
             f.write(response.content)
 
+# Initialize session state for text persistence
+if "captured_text" not in st.session_state:
+    st.session_state.captured_text = ""
+
 # Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Sign to Text", "Text to Sign", "About"])
@@ -31,20 +34,17 @@ if page == "Sign to Text":
 
     # Container for prediction
     container = st.container()
-    captured_text = st.text_area("Predicted Text:", value="", height=100, disabled=True)
 
     # Webcam capture
     cam = st.camera_input("Capture an image")
 
-    # Process webcam image
     if cam is not None:
         predicted_class = predict_sign(cam)
         st.image(cam, caption="Captured Image", use_container_width=True)
         st.success(f"Predicted Sign: {predicted_class}")
 
-        # Append predicted sign to the text box
-        captured_text += predicted_class
-        st.text_area("Predicted Text:", value=captured_text, height=100, disabled=True)
+        # Append predicted sign to the session state text
+        st.session_state.captured_text += predicted_class
 
     # Upload image
     uploaded_file = st.file_uploader("Or upload an image...", type=["jpg", "jpeg", "png"])
@@ -54,14 +54,15 @@ if page == "Sign to Text":
         st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
         st.success(f"Predicted Sign: {predicted_class}")
 
-        # Append predicted sign to the text box
-        captured_text += predicted_class
-        st.text_area("Predicted Text:", value=captured_text, height=100, disabled=True)
+        # Append predicted sign to the session state text
+        st.session_state.captured_text += predicted_class
+
+    # Display predicted text
+    st.text_area("Predicted Text:", value=st.session_state.captured_text, height=100, disabled=True)
 
     # Clear text button
     if st.button("Clear Text"):
-        captured_text = ""
-        st.text_area("Predicted Text:", value=captured_text, height=100, disabled=True)
+        st.session_state.captured_text = ""  # Reset the stored text
 
 elif page == "Text to Sign":
     st.title("Text to Sign Language")

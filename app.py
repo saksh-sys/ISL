@@ -5,7 +5,10 @@ from tensorflow.keras.preprocessing import image
 import requests
 from io import BytesIO
 import os
+import cv2
+from PIL import Image
 from sign_to_text import predict_sign
+from text_to_sign import text_to_sign
 
 # GitHub link to your model
 MODEL_URL = "https://github.com/saksh-sys/ISL/blob/main/model_sign_99.h5?raw=true"
@@ -20,40 +23,71 @@ if not os.path.exists(MODEL_PATH):
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "About"])
+page = st.sidebar.radio("Go to", ["Sign to Text", "Text to Sign", "About"])
 
-if page == "Home":
-    # Main Page - Sign Prediction
+if page == "Sign to Text":
     st.title("Indian Sign Language Recognition")
-    st.write("Upload an image of a hand gesture, and the model will predict the corresponding letter or number.")
+    st.write("Upload an image or capture from webcam to predict the corresponding sign.")
+
+    # Container for prediction
+    container = st.container()
+    captured_text = st.text_area("Predicted Text:", value="", height=100, disabled=True)
+
+    # Webcam capture
+    cam = st.camera_input("Capture an image")
+
+    # Process webcam image
+    if cam is not None:
+        predicted_class = predict_sign(cam)
+        st.image(cam, caption="Captured Image", use_container_width=True)
+        st.success(f"Predicted Sign: {predicted_class}")
+
+        # Append predicted sign to the text box
+        captured_text += predicted_class
+        st.text_area("Predicted Text:", value=captured_text, height=100, disabled=True)
 
     # Upload image
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("Or upload an image...", type=["jpg", "jpeg", "png"])
 
     if uploaded_file is not None:
-        # Make prediction
         predicted_class = predict_sign(uploaded_file)
-
-        # Display results
         st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
         st.success(f"Predicted Sign: {predicted_class}")
 
+        # Append predicted sign to the text box
+        captured_text += predicted_class
+        st.text_area("Predicted Text:", value=captured_text, height=100, disabled=True)
+
+    # Clear text button
+    if st.button("Clear Text"):
+        captured_text = ""
+        st.text_area("Predicted Text:", value=captured_text, height=100, disabled=True)
+
+elif page == "Text to Sign":
+    st.title("Text to Sign Language")
+    st.write("Enter text, and the corresponding sign language images will be displayed.")
+
+    user_text = st.text_input("Enter text:", "")
+    
+    if st.button("Convert"):
+        if user_text:
+            images = text_to_sign(user_text)
+            for img in images:
+                st.image(img, use_column_width=True)
+
 elif page == "About":
-    # About Page
     st.title("About This Project")
     st.write(
         """
-        This application is built to recognize **Indian Sign Language (ISL)** gestures using a deep learning model. 
-        The model is trained on a dataset containing **36 classes (A-Z & 0-9)** using **MobileNetV2**.
+        This application recognizes **Indian Sign Language (ISL)** gestures using deep learning.  
+        - **Dataset**: Indian Sign Language (ISLRTC)  
+        - **Model**: MobileNetV2  
+        - **Framework**: TensorFlow & Streamlit  
 
-        🔹 **Dataset**: Indian Sign Language (ISLRTC)  
-        🔹 **Model**: Pre-trained MobileNetV2 + Custom Classification  
-        🔹 **Framework**: TensorFlow & Streamlit  
-
-        ### How It Works:
-        - Upload an image of a hand gesture.
-        - The model processes and predicts the corresponding sign.
-        - Results are displayed instantly with high accuracy!
+        **How It Works:**
+        - Capture or upload an image of a sign.
+        - The model predicts the corresponding letter/number.
+        - Text-to-sign conversion available.
 
         **Built by:** [Saksham Raj Gupta](https://github.com/saksh-sys)
         """

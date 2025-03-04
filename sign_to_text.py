@@ -15,8 +15,8 @@ class_labels = sorted(os.listdir(DATASET_PATH))  # Ensure sorted order
 def predict_sign(img_file):
     """Predicts the sign from an uploaded or captured image."""
     
-    # Handle different input types (file upload vs camera capture)
-    if isinstance(img_file, bytes) or hasattr(img_file, "getvalue"):
+    # Convert webcam capture or uploaded image to PIL format
+    if hasattr(img_file, "getvalue"):
         img = Image.open(io.BytesIO(img_file.getvalue())).convert("RGB")  # Convert to RGB format
     else:
         img = Image.open(img_file).convert("RGB")  # Ensure RGB format

@@ -73,8 +73,17 @@ elif page == "Text to Sign":
     if st.button("Convert"):
         if user_text:
             images = text_to_sign(user_text)
-            for img in images:
-                st.image(img, use_container_width=True)
+            
+            if images:
+                # Arrange images in a 4-column layout
+                cols = st.columns(4)  # Creates 4 columns
+                
+                for i, img in enumerate(images):
+                    with cols[i % 4]:  # Distribute images across columns
+                        st.image(img.resize((150, 150)), use_column_width=True)  # Adjust image size
+            else:
+                st.warning("No matching sign images found. Check dataset folder.")
+
 
 elif page == "About":
     st.title("About This Project")

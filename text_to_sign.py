@@ -1,11 +1,11 @@
 import os
 from PIL import Image
 
-# Assuming you have images named as "A.jpg", "B.jpg", ..., "0.jpg"
+# Path to dataset
 DATASET_PATH = "dataset/"
 
 def text_to_sign(text):
-    """Converts text to sign language images."""
+    """Converts text to corresponding sign images."""
     images = []
     for char in text.upper():
         img_path = os.path.join(DATASET_PATH, f"{char}.jpg")

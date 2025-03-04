@@ -37,4 +37,3 @@ while cap.isOpened():
 
 # Release camera
 cap.release()
-cv2.destroyAllWindows()

@@ -74,7 +74,7 @@ elif page == "Text to Sign":
         if user_text:
             images = text_to_sign(user_text)
             for img in images:
-                st.image(img, use_column_width=True)
+                st.image(img, use_container_width=True)
 
 elif page == "About":
     st.title("About This Project")
